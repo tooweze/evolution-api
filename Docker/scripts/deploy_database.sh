@@ -6,7 +6,14 @@ if [ "$DOCKER_ENV" != "true" ]; then
     export_env_vars
 fi
 
+# Use default provider if not set
+DATABASE_PROVIDER=${DATABASE_PROVIDER:-postgresql}
+
 if [[ "$DATABASE_PROVIDER" == "postgresql" || "$DATABASE_PROVIDER" == "mysql" || "$DATABASE_PROVIDER" == "psql_bouncer" ]]; then
+    if [ -z "$DATABASE_URL" ]; then
+        echo "Error: DATABASE_URL is required for database deployment"
+        exit 1
+    fi
     export DATABASE_URL
     echo "Deploying migrations for $DATABASE_PROVIDER"
     echo "Database URL: $DATABASE_URL"
