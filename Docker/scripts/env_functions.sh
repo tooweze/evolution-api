@@ -12,7 +12,11 @@ export_env_vars() {
             export "$key=$value"
         done < .env
     else
-        echo ".env file not found"
-        exit 1
+        if [ "$DOCKER_ENV" = "true" ]; then
+            echo ".env file not found, but DOCKER_ENV=true - using environment variables instead"
+        else
+            echo ".env file not found"
+            exit 1
+        fi
     fi
 }
