@@ -7,7 +7,15 @@ export class CacheService {
 
   constructor(private readonly cache: ICache) {
     if (cache) {
-      const engineName = cache.constructor?.name?.toLowerCase().replace('cache', '') || 'unknown';
+      let engineName = 'unknown';
+      const className = cache.constructor?.name || '';
+      if (className.toLowerCase().includes('redis')) {
+        engineName = 'redis';
+      } else if (className.toLowerCase().includes('local')) {
+        engineName = 'local';
+      } else {
+        engineName = className.toLowerCase().replace('cache', '') || 'unknown';
+      }
       this.logger.verbose(`cacheservice created using cache engine: ${engineName}`);
     } else {
       this.logger.verbose(`cacheservice disabled`);

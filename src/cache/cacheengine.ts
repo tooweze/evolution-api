@@ -60,19 +60,31 @@ export class CacheEngine {
       // Como o construtor é síncrono, verificamos após um pequeno delay
       setTimeout(async () => {
         try {
-          const isConnected = await redisClient.waitForConnection(5000);
+          const isConnected = await redisClient.waitForConnection(10000);
           if (!isConnected) {
-            const errorMsg = `Redis connection failed for ${module}. CACHE_TYPE=redis requires a working Redis connection. Application will exit.`;
+            const cacheConf = configService.get<CacheConf>('CACHE');
+            const redisUri = cacheConf?.REDIS?.URI || 'not configured';
+            const maskedUri = redisUri.replace(/:[^:@]+@/, ':****@');
+            const errorMsg = `Redis connection failed for ${module}. CACHE_TYPE=redis requires a working Redis connection.`;
             logger.error(errorMsg);
+            logger.error(`Redis URI: ${maskedUri}`);
             logger.error('Please check your Redis configuration and ensure Redis is running and accessible.');
-            process.exit(1);
+            logger.error('Application will exit in 2 seconds...');
+            setTimeout(() => {
+              logger.error('Exiting application due to Redis connection failure...');
+              process.exit(1);
+            }, 2000);
           } else {
             logger.verbose(`RedisCache successfully initialized and connected for ${module}`);
           }
         } catch (error) {
-          const errorMsg = `Redis connection error for ${module}: ${error.message}. CACHE_TYPE=redis requires a working Redis connection. Application will exit.`;
-          logger.error(errorMsg);
-          process.exit(1);
+          const errorMsg = error?.message || error?.toString() || 'Unknown error';
+          logger.error(`Redis connection error for ${module}: ${errorMsg}. CACHE_TYPE=redis requires a working Redis connection.`);
+          logger.error('Application will exit in 2 seconds...');
+          setTimeout(() => {
+            logger.error('Exiting application due to Redis connection error...');
+            process.exit(1);
+          }, 2000);
         }
       }, 100);
     } else if (cacheType === 'local') {

@@ -62,7 +62,11 @@ class Redis {
     });
 
     this.client.on('error', (error) => {
-      this.logger.error(`redis disconnected: ${error.message}`);
+      const errorMsg = error?.message || error?.toString() || 'Unknown error';
+      this.logger.error(`redis disconnected: ${errorMsg}`);
+      if (error?.stack) {
+        this.logger.error(`redis error stack: ${error.stack}`);
+      }
       this.connected = false;
     });
 
@@ -73,11 +77,17 @@ class Redis {
 
     this.connectionPromise = (async () => {
       try {
+        this.logger.verbose(`Attempting to connect to Redis at: ${this.conf?.URI ? this.conf.URI.replace(/:[^:@]+@/, ':****@') : 'URI not configured'}`);
         await this.client.connect();
         this.connected = true;
+        this.logger.verbose('Redis connection established successfully');
       } catch (e) {
         this.connected = false;
-        this.logger.error(`redis connect exception caught: ${e.message}`);
+        const errorMsg = e?.message || e?.toString() || 'Unknown connection error';
+        this.logger.error(`redis connect exception caught: ${errorMsg}`);
+        if (e?.stack) {
+          this.logger.error(`redis connect stack: ${e.stack}`);
+        }
         throw e;
       }
     })();
