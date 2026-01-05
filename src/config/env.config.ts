@@ -844,13 +844,29 @@ export class ConfigService {
         TYPE: (process.env?.CACHE_TYPE || 'local').toLowerCase() as CacheType,
         REDIS: {
           ENABLED: process.env?.CACHE_REDIS_ENABLED === 'true',
-          URI:
-            process.env?.CACHE_REDIS_URI ||
-            process.env?.REDIS_URL ||
-            process.env?.REDISCLOUD_URL ||
-            process.env?.REDIS_TLS_URL ||
-            process.env?.REDIS_HOST ||
-            '',
+          URI: (() => {
+            // Prioridade: CACHE_REDIS_URI > REDIS_URL > REDISCLOUD_URL > REDIS_TLS_URL > construir de REDIS_HOST
+            if (process.env?.CACHE_REDIS_URI) {
+              return process.env.CACHE_REDIS_URI;
+            }
+            if (process.env?.REDIS_URL) {
+              return process.env.REDIS_URL;
+            }
+            if (process.env?.REDISCLOUD_URL) {
+              return process.env.REDISCLOUD_URL;
+            }
+            if (process.env?.REDIS_TLS_URL) {
+              return process.env.REDIS_TLS_URL;
+            }
+            // Se apenas REDIS_HOST estiver disponível, construir URI
+            if (process.env?.REDIS_HOST) {
+              const port = process.env?.REDIS_PORT || '6379';
+              const password = process.env?.REDIS_PASSWORD ? `:${process.env.REDIS_PASSWORD}@` : '';
+              const protocol = process.env?.REDIS_TLS === 'true' ? 'rediss://' : 'redis://';
+              return `${protocol}${password}${process.env.REDIS_HOST}:${port}`;
+            }
+            return '';
+          })(),
           PREFIX_KEY: process.env?.CACHE_REDIS_PREFIX_KEY || 'evolution-cache',
           TTL: Number.parseInt(process.env?.CACHE_REDIS_TTL) || 604800,
           SAVE_INSTANCES: process.env?.CACHE_REDIS_SAVE_INSTANCES === 'true',
