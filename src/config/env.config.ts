@@ -844,7 +844,13 @@ export class ConfigService {
         TYPE: (process.env?.CACHE_TYPE || 'local').toLowerCase() as CacheType,
         REDIS: {
           ENABLED: process.env?.CACHE_REDIS_ENABLED === 'true',
-          URI: process.env?.CACHE_REDIS_URI || '',
+          URI:
+            process.env?.CACHE_REDIS_URI ||
+            process.env?.REDIS_URL ||
+            process.env?.REDISCLOUD_URL ||
+            process.env?.REDIS_TLS_URL ||
+            process.env?.REDIS_HOST ||
+            '',
           PREFIX_KEY: process.env?.CACHE_REDIS_PREFIX_KEY || 'evolution-cache',
           TTL: Number.parseInt(process.env?.CACHE_REDIS_TTL) || 604800,
           SAVE_INSTANCES: process.env?.CACHE_REDIS_SAVE_INSTANCES === 'true',
