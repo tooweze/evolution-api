@@ -1,21 +1,47 @@
 import { ICache } from '@api/abstract/abstract.cache';
+import { CacheConf, ConfigService } from '@config/env.config';
 import { Logger } from '@config/logger.config';
 import { BufferJSON } from 'baileys';
 
 export class CacheService {
   private readonly logger = new Logger('CacheService');
 
-  constructor(private readonly cache: ICache) {
+  constructor(
+    private readonly cache: ICache,
+    private readonly configService?: ConfigService,
+  ) {
     if (cache) {
       let engineName = 'unknown';
-      const className = cache.constructor?.name || '';
-      if (className.toLowerCase().includes('redis')) {
-        engineName = 'redis';
-      } else if (className.toLowerCase().includes('local')) {
-        engineName = 'local';
-      } else {
-        engineName = className.toLowerCase().replace('cache', '') || 'unknown';
+      
+      // Try to get engine name from configuration first (most reliable)
+      if (this.configService) {
+        const cacheConf = this.configService.get<CacheConf>('CACHE');
+        const cacheType = cacheConf?.TYPE;
+        if (cacheType === 'redis' || cacheType === 'local') {
+          engineName = cacheType;
+        }
       }
+      
+      // Fallback: try to detect from class name (may not work after minification)
+      if (engineName === 'unknown') {
+        const className = cache.constructor?.name || '';
+        if (className.toLowerCase().includes('redis')) {
+          engineName = 'redis';
+        } else if (className.toLowerCase().includes('local')) {
+          engineName = 'local';
+        } else {
+          // Try to detect by checking if cache has Redis-specific properties
+          const cacheAny = cache as any;
+          if (cacheAny.client && typeof cacheAny.client.get === 'function') {
+            engineName = 'redis';
+          } else if (cacheAny.localCache) {
+            engineName = 'local';
+          } else {
+            engineName = className.toLowerCase().replace('cache', '') || 'unknown';
+          }
+        }
+      }
+      
       this.logger.verbose(`cacheservice created using cache engine: ${engineName}`);
     } else {
       this.logger.verbose(`cacheservice disabled`);

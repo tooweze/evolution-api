@@ -162,7 +162,10 @@ export interface ExtendedIMessageKey extends proto.IMessageKey {
   isViewOnce?: boolean;
 }
 
-const groupMetadataCache = new CacheService(new CacheEngine(configService, 'groups').getEngine());
+const groupMetadataCache = new CacheService(
+  new CacheEngine(configService, 'groups').getEngine(),
+  configService,
+);
 
 // Adicione a função getVideoDuration no início do arquivo
 async function getVideoDuration(input: Buffer | string | Readable): Promise<number> {

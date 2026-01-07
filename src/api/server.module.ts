@@ -49,11 +49,20 @@ const logger = new Logger('WA MODULE');
 
 let chatwootCache: CacheService = null;
 if (configService.get<Chatwoot>('CHATWOOT').ENABLED) {
-  chatwootCache = new CacheService(new CacheEngine(configService, ChatwootService.name).getEngine());
+  chatwootCache = new CacheService(
+    new CacheEngine(configService, ChatwootService.name).getEngine(),
+    configService,
+  );
 }
 
-export const cache = new CacheService(new CacheEngine(configService, 'instance').getEngine());
-const baileysCache = new CacheService(new CacheEngine(configService, 'baileys').getEngine());
+export const cache = new CacheService(
+  new CacheEngine(configService, 'instance').getEngine(),
+  configService,
+);
+const baileysCache = new CacheService(
+  new CacheEngine(configService, 'baileys').getEngine(),
+  configService,
+);
 
 let providerFiles: ProviderFiles = null;
 if (configService.get<ProviderSession>('PROVIDER').ENABLED) {
