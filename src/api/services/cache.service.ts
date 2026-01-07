@@ -12,7 +12,7 @@ export class CacheService {
   ) {
     if (cache) {
       let engineName = 'unknown';
-      
+
       // Try to get engine name from configuration first (most reliable)
       if (this.configService) {
         const cacheConf = this.configService.get<CacheConf>('CACHE');
@@ -21,7 +21,7 @@ export class CacheService {
           engineName = cacheType;
         }
       }
-      
+
       // Fallback: try to detect from class name (may not work after minification)
       if (engineName === 'unknown') {
         const className = cache.constructor?.name || '';
@@ -41,7 +41,7 @@ export class CacheService {
           }
         }
       }
-      
+
       this.logger.verbose(`cacheservice created using cache engine: ${engineName}`);
     } else {
       this.logger.verbose(`cacheservice disabled`);
