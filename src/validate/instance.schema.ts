@@ -31,7 +31,7 @@ export const instanceSchema: JSONSchema7 = {
     number: { type: 'string', pattern: '^\\d+[\\.@\\w-]+' },
     businessId: { type: 'string' },
     qrcode: { type: 'boolean' },
-    Integration: {
+    integration: {
       type: 'string',
       enum: Object.values(Integration),
     },

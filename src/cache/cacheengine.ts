@@ -4,6 +4,7 @@ import { Logger } from '@config/logger.config';
 
 import { LocalCache } from './localcache';
 import { RedisCache } from './rediscache';
+import { redisClient } from './rediscache.client';
 
 const logger = new Logger('CacheEngine');
 
@@ -15,13 +16,91 @@ export class CacheEngine {
     module: string,
   ) {
     const cacheConf = configService.get<CacheConf>('CACHE');
+    // Se CACHE_TYPE não estiver definido, usa lógica de fallback baseada nas configurações
+    let cacheType = cacheConf?.TYPE;
+    if (!cacheType) {
+      // Compatibilidade: se Redis estiver habilitado e URI configurada, usa Redis
+      if (cacheConf?.REDIS?.ENABLED && cacheConf?.REDIS?.URI && cacheConf.REDIS.URI !== '') {
+        cacheType = 'redis';
+      } else {
+        cacheType = 'local';
+      }
+    }
 
-    if (cacheConf?.REDIS?.ENABLED && cacheConf?.REDIS?.URI !== '') {
-      logger.verbose(`RedisCache initialized for ${module}`);
+    if (cacheType === 'redis') {
+      if (!cacheConf?.REDIS?.ENABLED) {
+        const error = new Error(
+          `CACHE_TYPE=redis but CACHE_REDIS_ENABLED is not true. Redis cache is required but not enabled.`,
+        );
+        logger.error(error.message);
+        throw error;
+      }
+
+      if (!cacheConf?.REDIS?.URI || cacheConf.REDIS.URI === '') {
+        const error = new Error(
+          `CACHE_TYPE=redis but CACHE_REDIS_URI is empty. Redis cache is required but URI is not configured.`,
+        );
+        logger.error(error.message);
+        throw error;
+      }
+
+      logger.verbose(`Initializing RedisCache for ${module} (CACHE_TYPE=redis)`);
       this.engine = new RedisCache(configService, module);
-    } else if (cacheConf?.LOCAL?.ENABLED) {
+
+      const client = redisClient.getConnection();
+      if (!client) {
+        const error = new Error(
+          `Failed to initialize Redis client for ${module}. Redis connection is required when CACHE_TYPE=redis.`,
+        );
+        logger.error(error.message);
+        throw error;
+      }
+
+      // Verificar conexão Redis de forma assíncrona (fail-fast)
+      // Como o construtor é síncrono, verificamos após um pequeno delay
+      setTimeout(async () => {
+        try {
+          const isConnected = await redisClient.waitForConnection(10000);
+          if (!isConnected) {
+            const cacheConf = configService.get<CacheConf>('CACHE');
+            const redisUri = cacheConf?.REDIS?.URI || 'not configured';
+            const maskedUri = redisUri.replace(/:[^:@]+@/, ':****@');
+            const errorMsg = `Redis connection failed for ${module}. CACHE_TYPE=redis requires a working Redis connection.`;
+            logger.error(errorMsg);
+            logger.error(`Redis URI: ${maskedUri}`);
+            logger.error('Please check your Redis configuration and ensure Redis is running and accessible.');
+            logger.error('Application will exit in 2 seconds...');
+            setTimeout(() => {
+              logger.error('Exiting application due to Redis connection failure...');
+              process.exit(1);
+            }, 2000);
+          } else {
+            logger.verbose(`RedisCache successfully initialized and connected for ${module}`);
+          }
+        } catch (error) {
+          const errorMsg = error?.message || error?.toString() || 'Unknown error';
+          logger.error(
+            `Redis connection error for ${module}: ${errorMsg}. CACHE_TYPE=redis requires a working Redis connection.`,
+          );
+          logger.error('Application will exit in 2 seconds...');
+          setTimeout(() => {
+            logger.error('Exiting application due to Redis connection error...');
+            process.exit(1);
+          }, 2000);
+        }
+      }, 100);
+    } else if (cacheType === 'local') {
+      if (!cacheConf?.LOCAL?.ENABLED) {
+        logger.warn(`CACHE_TYPE=local but CACHE_LOCAL_ENABLED is not true. Cache will be disabled for ${module}.`);
+        this.engine = null;
+        return;
+      }
+
       logger.verbose(`LocalCache initialized for ${module}`);
       this.engine = new LocalCache(configService, module);
+    } else {
+      logger.warn(`Unknown CACHE_TYPE=${cacheType}. Cache will be disabled for ${module}.`);
+      this.engine = null;
     }
   }
 

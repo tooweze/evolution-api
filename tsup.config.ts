@@ -8,7 +8,7 @@ const licenseEndpointEncoded = JSON.stringify(process.env.LICENSE_ENDPOINT_ENCOD
 const licenseEndpointXorKey = JSON.stringify(process.env.LICENSE_ENDPOINT_XOR_KEY ?? '');
 
 export default defineConfig({
-  entry: ['src'],
+  entry: ['src/**/*.ts', 'src/**/*.json'],
   outDir: 'dist',
   splitting: false,
   sourcemap: true,
@@ -25,5 +25,6 @@ export default defineConfig({
   loader: {
     '.json': 'file',
     '.yml': 'file',
+    '.zip': 'empty',
   },
 });

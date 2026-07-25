@@ -168,7 +168,7 @@ export interface ExtendedIMessageKey extends proto.IMessageKey {
   isViewOnce?: boolean;
 }
 
-const groupMetadataCache = new CacheService(new CacheEngine(configService, 'groups').getEngine());
+const groupMetadataCache = new CacheService(new CacheEngine(configService, 'groups').getEngine(), configService);
 
 // Adicione a função getVideoDuration no início do arquivo
 async function getVideoDuration(input: Buffer | string | Readable): Promise<number> {
@@ -675,14 +675,21 @@ export class BaileysStartupService extends ChannelStartupService {
       return await this.authStateProvider.authStateProvider(this.instance.id);
     }
 
-    if (cache?.REDIS.ENABLED && cache?.REDIS.SAVE_INSTANCES) {
-      this.logger.info('Redis enabled');
+    // Check if Redis should be used (CACHE_TYPE=redis or REDIS.ENABLED with SAVE_INSTANCES)
+    const useRedis = cache?.TYPE === 'redis' || (cache?.REDIS?.ENABLED && cache?.REDIS?.SAVE_INSTANCES);
+
+    if (useRedis) {
+      this.logger.info('Redis enabled for auth state');
       return await useMultiFileAuthStateRedisDb(this.instance.id, this.cache);
     }
 
     if (db.SAVE_DATA.INSTANCE) {
       return await useMultiFileAuthStatePrisma(this.instance.id, this.cache);
     }
+
+    // Fallback: use Prisma if database save is enabled, otherwise throw error
+    this.logger.warn('No auth state provider configured. Using Prisma as fallback.');
+    return await useMultiFileAuthStatePrisma(this.instance.id, this.cache);
   }
 
   private async createClient(number?: string): Promise<WASocket> {
